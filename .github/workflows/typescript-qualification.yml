@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.15.0
-      - run: npm install --global corepack && corepack enable
+      - run: npm install --global --force corepack && corepack enable
       - name: Build and test mlly
         working-directory: mlly
         run: |

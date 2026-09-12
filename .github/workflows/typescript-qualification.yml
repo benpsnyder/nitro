@@ -19,6 +19,7 @@ jobs:
       run:
         shell: bash
     steps:
+      - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
         with:
           path: nitro

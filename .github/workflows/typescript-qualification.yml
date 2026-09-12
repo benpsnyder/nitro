@@ -1,0 +1,61 @@
+name: TypeScript externalization qualification
+on:
+  push:
+    branches: [qualify/typescript-server-imports]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  portable-output:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    env:
+      CHOKIDAR_USEPOLLING: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: nitro
+      - uses: actions/checkout@v4
+        with:
+          repository: benpsnyder/mlly
+          ref: ab98fb243603b14afbffee3f21dea4337c2b7bae
+          path: mlly
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - run: npm install --global corepack && corepack enable
+      - name: Build and test mlly
+        working-directory: mlly
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm build
+          mkdir -p ../artifacts
+          npm pack --ignore-scripts --pack-destination ../artifacts
+      - name: Build and test Nitro resolver
+        working-directory: nitro
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm stub
+          pnpm exec vitest run test/unit/externals.test.ts
+          pnpm build
+          npm pack --ignore-scripts --pack-destination ../artifacts
+      - name: Qualify packed runtime matrix
+        run: node nitro/.github/qualification/run-matrix.mjs "$GITHUB_WORKSPACE"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qualification-${{ matrix.os }}
+          path: |
+            qualification/matrix.json
+            qualification/*/result-*.json
+            qualification/*/run-*.log
+            qualification/*/install.log
+          retention-days: 14
